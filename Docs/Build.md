@@ -25,6 +25,66 @@ cmake ..
 cmake --build . --config Release
 ```
 
+## Build Configuration
+
+### Test Version (with Console Window)
+
+The test version includes a console window for debugging output. This is useful during development.
+
+**How to build:**
+1. Open `CMakeLists.txt`
+2. Ensure the test version configuration is uncommented:
+   ```cmake
+   add_executable(${PROJECT_NAME} 
+       Src/main.cpp
+       Src/TargetDialog.cpp
+       Src/TimePickerDialog.cpp
+   )
+   ```
+3. Ensure the formal version configuration is commented out:
+   ```cmake
+   # add_executable(${PROJECT_NAME} WIN32 
+   #     Src/main.cpp
+   #     Src/TargetDialog.cpp
+   #     Src/TimePickerDialog.cpp
+   # )
+   ```
+4. Ensure the `printf` debugging statements in `Src/main.cpp` are uncommented
+
+**Features:**
+- Console window shows debug output
+- Easy to trace program execution flow
+- Useful for development and debugging
+
+### Release Version (without Console Window)
+
+The release version is a pure GUI application without any console window. This is suitable for production use.
+
+**How to build:**
+1. Open `CMakeLists.txt`
+2. Ensure the formal version configuration is uncommented:
+   ```cmake
+   add_executable(${PROJECT_NAME} WIN32 
+       Src/main.cpp
+       Src/TargetDialog.cpp
+       Src/TimePickerDialog.cpp
+   )
+   ```
+3. Ensure the test version configuration is commented out:
+   ```cmake
+   # add_executable(${PROJECT_NAME} 
+   #     Src/main.cpp
+   #     Src/TargetDialog.cpp
+   #     Src/TimePickerDialog.cpp
+   # )
+   ```
+4. Comment out all `printf` debugging statements in `Src/main.cpp` (lines marked with "正式版请注释")
+
+**Features:**
+- Clean GUI-only application
+- No console window
+- Suitable for end-users
+
 ## Clean Build Artifacts
 
 ```cmd

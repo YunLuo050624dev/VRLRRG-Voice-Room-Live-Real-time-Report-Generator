@@ -11,6 +11,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 struct CounterData {
     HWND hCurrEdit;
     HWND hTgtEdit;
+    HWND hIncBtn;
     int incBtnId;
     int setBtnId;
     int currValue;
@@ -36,7 +37,9 @@ struct HostData {
     int hostIndex;
 };
 
-extern std::vector<HostData> gHosts;
+#define MAX_HOSTS 8
+
+extern HostData gHosts[MAX_HOSTS];
 extern CounterData gCounters[6];
 extern int gHostCount;
 extern int gBaseY;

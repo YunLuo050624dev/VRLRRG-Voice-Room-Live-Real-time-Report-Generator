@@ -17,7 +17,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 #include "TargetDialog.h"
 #include "TimePickerDialog.h"
 
-std::vector<HostData> gHosts;
+HostData gHosts[MAX_HOSTS];
 CounterData gCounters[6];
 int gHostCount = BASE_HOST_COUNT;
 int gBaseY;
@@ -39,29 +39,50 @@ HWND CreateLabel(HWND hParent, int x, int y, const wchar_t* text) {
 
 HWND CreateEdit(HWND hParent, int x, int y, int w, int h, int id, const wchar_t* text = L"") {
     DWORD style = WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | ES_LEFT;
-    return CreateWindow(L"edit", text, style, x, y, w, h, hParent, (HMENU)id, NULL, NULL);
+    return CreateWindow(L"edit", text, style, x, y, w, h, hParent, (HMENU)(UINT_PTR)id, NULL, NULL);
 }
 
 HWND CreateNumberEdit(HWND hParent, int x, int y, int w, int h, int id, const wchar_t* text = L"") {
     DWORD style = WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER | ES_LEFT;
-    return CreateWindow(L"edit", text, style, x, y, w, h, hParent, (HMENU)id, NULL, NULL);
+    return CreateWindow(L"edit", text, style, x, y, w, h, hParent, (HMENU)(UINT_PTR)id, NULL, NULL);
 }
 
 HWND CreateButton(HWND hParent, int x, int y, int w, int h, int id, const wchar_t* text) {
     return CreateWindow(L"button", text, WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        x, y, w, h, hParent, (HMENU)id, NULL, NULL);
+        x, y, w, h, hParent, (HMENU)(UINT_PTR)id, NULL, NULL);
 }
 
-void CreateCounterWithTarget(HWND hwnd, int x, int y, const wchar_t* label, int incBtnId, int setBtnId, int currEditId, int tgtEditId, CounterData* pCounter) {
+void CreateCounterWithTarget(HWND hwnd, int x, int y, const wchar_t* label, int incBtnId, int setBtnId, int currEditId, int tgtEditId, CounterData* pCounter, bool showIncBtn = true) {
     CreateLabel(hwnd, x, y, label);
     pCounter->hCurrEdit = CreateNumberEdit(hwnd, x + 65, y, 50, 25, currEditId, L"0");
-    CreateButton(hwnd, x + 120, y, 30, 25, incBtnId, L"+1");
+    if (showIncBtn) {
+        CreateButton(hwnd, x + 120, y, 30, 25, incBtnId, L"+1");
+        pCounter->hIncBtn = NULL;
+    } else {
+        pCounter->hIncBtn = NULL;
+    }
     pCounter->hTgtEdit = CreateNumberEdit(hwnd, x + 155, y, 50, 25, tgtEditId, L"0");
     CreateButton(hwnd, x + 205, y, 60, 25, setBtnId, L"设定目标");
     pCounter->incBtnId = incBtnId;
     pCounter->setBtnId = setBtnId;
     pCounter->currValue = 0;
     pCounter->tgtValue = 0;
+}
+
+void UpdateSummaryCounters() {
+    int totalLaxin = 0, totalErxiao = 0, totalJianlian = 0, totalSanguan = 0;
+    
+    for (int i = 0; i < gHostCount; i++) {
+        totalLaxin += GetWindowTextInt(gHosts[i].hLaxinEdit);
+        totalErxiao += GetWindowTextInt(gHosts[i].hErxiaoEdit);
+        totalJianlian += GetWindowTextInt(gHosts[i].hJianlianEdit);
+        totalSanguan += GetWindowTextInt(gHosts[i].hSanguanEdit);
+    }
+    
+    SetWindowText(gCounters[2].hCurrEdit, std::to_wstring(totalLaxin).c_str());
+    SetWindowText(gCounters[4].hCurrEdit, std::to_wstring(totalErxiao).c_str());
+    SetWindowText(gCounters[3].hCurrEdit, std::to_wstring(totalJianlian).c_str());
+    SetWindowText(gCounters[5].hCurrEdit, std::to_wstring(totalSanguan).c_str());
 }
 
 void CreateHostRow(HWND hwnd, int x, int y, int hostIndex, int totalWidth) {
@@ -123,7 +144,7 @@ void CreateHostRow(HWND hwnd, int x, int y, int hostIndex, int totalWidth) {
         host.hDelBtn = NULL;
     }
 
-    gHosts.push_back(host);
+    gHosts[hostIndex] = host;
 }
 
 void UpdateHostRows(HWND hwnd) {
@@ -131,7 +152,7 @@ void UpdateHostRows(HWND hwnd) {
         bool show = (i < gHostCount);
         bool showDel = (i >= 3 && i < gHostCount);
 
-        if (i < (int)gHosts.size()) {
+        if (i < MAX_HOSTS) {
             int rowY = gBaseY + i * 30;
             
             // 计算每个控件的X位置
@@ -206,6 +227,8 @@ void ShowDeleteConfirmDialog(HWND hwnd, int hostIndex) {
     swprintf_s(msg, L"是否确认删除%d号主持位？\r\n（已统计的该主持数据将被清空）", hostIndex + 1);
 
     if (MessageBox(hwnd, msg, L"确认删除", MB_OKCANCEL | MB_ICONWARNING) == IDOK) {
+            // [TEST] Remove host slot (uncomment for debug build, comment for release)
+            // printf("[TEST] Remove host slot #%d, count: %d -> %d\n", hostIndex + 1, gHostCount, gHostCount - 1);
         for (int i = hostIndex; i < gHostCount - 1; i++) {
             wchar_t buf1[64], buf2[64], buf3[64], buf4[64];
 
@@ -232,6 +255,7 @@ void ShowDeleteConfirmDialog(HWND hwnd, int hostIndex) {
 
         gHostCount--;
         UpdateHostRows(hwnd);
+        UpdateSummaryCounters();
         RECT rc;
         GetWindowRect(hwnd, &rc);
         SetWindowPos(hwnd, NULL, rc.left, rc.top, rc.right - rc.left, 425 + gHostCount * 30 + 30, SWP_NOZORDER);
@@ -327,6 +351,9 @@ void CopyDataToClipboard(HWND hwnd) {
             swprintf_s(timeStr, L"已于%04d年%02d月%02d日%02d时%02d分%02d秒复制数据",
                 st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
             SetWindowText(gLastCopyTimeLabel, timeStr);
+            
+            // [TEST] Copy data (uncomment for debug build, comment for release)
+            // printf("[TEST] Data copied to clipboard\n");
         } else {
             GlobalFree(hMem);
         }
@@ -341,6 +368,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         hFont = CreateFont(12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
             DEFAULT_PITCH | FF_SWISS, L"微软雅黑");
+        if (!hFont) {
+            hFont = CreateFont(12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+                DEFAULT_PITCH | FF_SWISS, L"SimHei");
+        }
+        if (!hFont) {
+            hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+        }
 
         int y = 20;
         // 厅名称
@@ -368,17 +403,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // 新付
         CreateCounterWithTarget(hwnd, 5, y, L"新付：", ID_BTN_XINFU_INC, ID_BTN_XINFU_SET, ID_EDIT_XINFU_CURR, ID_EDIT_XINFU_TGT, &gCounters[1]);
         y += 35;
-        // 拉新
-        CreateCounterWithTarget(hwnd, 5, y, L"拉新：", ID_BTN_LAXIN_INC, ID_BTN_LAXIN_SET, ID_EDIT_LAXIN_CURR, ID_EDIT_LAXIN_TGT, &gCounters[2]);
+        // 拉新（自动汇总，无+1按钮）
+        CreateCounterWithTarget(hwnd, 5, y, L"拉新：", ID_BTN_LAXIN_INC, ID_BTN_LAXIN_SET, ID_EDIT_LAXIN_CURR, ID_EDIT_LAXIN_TGT, &gCounters[2], false);
         y += 35;
-        // 建联
-        CreateCounterWithTarget(hwnd, 5, y, L"建联：", ID_BTN_JIANLIAN_INC, ID_BTN_JIANLIAN_SET, ID_EDIT_JIANLIAN_CURR, ID_EDIT_JIANLIAN_TGT, &gCounters[3]);
+        // 建联（自动汇总，无+1按钮）
+        CreateCounterWithTarget(hwnd, 5, y, L"建联：", ID_BTN_JIANLIAN_INC, ID_BTN_JIANLIAN_SET, ID_EDIT_JIANLIAN_CURR, ID_EDIT_JIANLIAN_TGT, &gCounters[3], false);
         y += 35;
-        // 二消
-        CreateCounterWithTarget(hwnd, 5, y, L"二消：", ID_BTN_ERXIAO_INC, ID_BTN_ERXIAO_SET, ID_EDIT_ERXIAO_CURR, ID_EDIT_ERXIAO_TGT, &gCounters[4]);
+        // 二消（自动汇总，无+1按钮）
+        CreateCounterWithTarget(hwnd, 5, y, L"二消：", ID_BTN_ERXIAO_INC, ID_BTN_ERXIAO_SET, ID_EDIT_ERXIAO_CURR, ID_EDIT_ERXIAO_TGT, &gCounters[4], false);
         y += 35;
-        // 三关
-        CreateCounterWithTarget(hwnd, 5, y, L"三关：", ID_BTN_SANGUAN_INC, ID_BTN_SANGUAN_SET, ID_EDIT_SANGUAN_CURR, ID_EDIT_SANGUAN_TGT, &gCounters[5]);
+        // 三关（自动汇总，无+1按钮）
+        CreateCounterWithTarget(hwnd, 5, y, L"三关：", ID_BTN_SANGUAN_INC, ID_BTN_SANGUAN_SET, ID_EDIT_SANGUAN_CURR, ID_EDIT_SANGUAN_TGT, &gCounters[5], false);
         y += 45;
         gBaseY = y;
 
@@ -403,17 +438,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         for (int i = 0; i < 6; i++) {
             if (id == gCounters[i].incBtnId) {
+                // [TEST] Log counter increment (uncomment for debug build)
+                // printf("[TEST] Counter +1 clicked, index: %d\n", i);
                 int value = GetWindowTextInt(gCounters[i].hCurrEdit);
                 SetWindowText(gCounters[i].hCurrEdit, std::to_wstring(value + 1).c_str());
                 return 0;
             }
             if (id == gCounters[i].setBtnId) {
+                // [TEST] Log target setting (uncomment for debug build)
+                // printf("[TEST] Target setting clicked, index: %d\n", i);
                 ShowTargetDialog(hwnd, &gCounters[i]);
                 return 0;
             }
         }
 
         if (id == ID_BTN_ADDHOST && gHostCount < MAX_HOSTS) {
+            // [TEST] Add host slot (uncomment for debug build, comment for release)
+            // printf("[TEST] Add host slot, count: %d -> %d\n", gHostCount, gHostCount + 1);
             gHostCount++;
             UpdateHostRows(hwnd);
             RECT rc;
@@ -426,6 +467,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         if (id >= ID_BTN_DELHOST_BASE && id < ID_BTN_DELHOST_BASE + MAX_HOSTS) {
             int hostIndex = id - ID_BTN_DELHOST_BASE;
+            // [TEST] Log delete host button click (uncomment for debug build)
+            // printf("[TEST] Delete host button clicked, index: %d\n", hostIndex);
             if (hostIndex >= 3 && hostIndex < gHostCount) {
                 ShowDeleteConfirmDialog(hwnd, hostIndex);
             }
@@ -434,40 +477,70 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         for (int i = 0; i < MAX_HOSTS; i++) {
             if (id == ID_HOST_BTN_LAXIN_INC_BASE + i) {
+                // [TEST] Log host laxin +1 (uncomment for debug build)
+                // printf("[TEST] Host #%d Laxin +1 clicked\n", i + 1);
                 int value = GetWindowTextInt(gHosts[i].hLaxinEdit);
                 SetWindowText(gHosts[i].hLaxinEdit, std::to_wstring(value + 1).c_str());
+                UpdateSummaryCounters();
                 return 0;
             }
             if (id == ID_HOST_BTN_ERXIAO_INC_BASE + i) {
+                // [TEST] Log host erxiao +1 (uncomment for debug build)
+                // printf("[TEST] Host #%d Erxiao +1 clicked\n", i + 1);
                 int value = GetWindowTextInt(gHosts[i].hErxiaoEdit);
                 SetWindowText(gHosts[i].hErxiaoEdit, std::to_wstring(value + 1).c_str());
+                UpdateSummaryCounters();
                 return 0;
             }
             if (id == ID_HOST_BTN_JIANLIAN_INC_BASE + i) {
+                // [TEST] Log host jianlian +1 (uncomment for debug build)
+                // printf("[TEST] Host #%d Jianlian +1 clicked\n", i + 1);
                 int value = GetWindowTextInt(gHosts[i].hJianlianEdit);
                 SetWindowText(gHosts[i].hJianlianEdit, std::to_wstring(value + 1).c_str());
+                UpdateSummaryCounters();
                 return 0;
             }
             if (id == ID_HOST_BTN_SANGUAN_INC_BASE + i) {
+                // [TEST] Log host sanguan +1 (uncomment for debug build)
+                // printf("[TEST] Host #%d Sanguan +1 clicked\n", i + 1);
                 int value = GetWindowTextInt(gHosts[i].hSanguanEdit);
                 SetWindowText(gHosts[i].hSanguanEdit, std::to_wstring(value + 1).c_str());
+                UpdateSummaryCounters();
                 return 0;
             }
         }
 
         if (id == ID_BTN_COPY) {
+            // [TEST] Log copy button click (uncomment for debug build)
+            // printf("[TEST] Copy data button clicked\n");
             CopyDataToClipboard(hwnd);
             return 0;
         }
 
         if (id == ID_BTN_TIME_START) {
+            // [TEST] Log time start button click (uncomment for debug build)
+            // printf("[TEST] Time start picker button clicked\n");
             ShowTimePickerDialog(hwnd, ID_EDIT_TIMESTART);
             return 0;
         }
 
         if (id == ID_BTN_TIME_END) {
+            // [TEST] Log time end button click (uncomment for debug build)
+            // printf("[TEST] Time end picker button clicked\n");
             ShowTimePickerDialog(hwnd, ID_EDIT_TIMEEND);
             return 0;
+        }
+
+        if (HIWORD(wParam) == EN_CHANGE) {
+            if ((id >= ID_HOST_EDIT_LAXIN_BASE && id < ID_HOST_EDIT_LAXIN_BASE + MAX_HOSTS) ||
+                (id >= ID_HOST_EDIT_ERXIAO_BASE && id < ID_HOST_EDIT_ERXIAO_BASE + MAX_HOSTS) ||
+                (id >= ID_HOST_EDIT_JIANLIAN_BASE && id < ID_HOST_EDIT_JIANLIAN_BASE + MAX_HOSTS) ||
+                (id >= ID_HOST_EDIT_SANGUAN_BASE && id < ID_HOST_EDIT_SANGUAN_BASE + MAX_HOSTS)) {
+                // [TEST] Log host data change (uncomment for debug build)
+                // printf("[TEST] Host data edited, updating summary counters\n");
+                UpdateSummaryCounters();
+                return 0;
+            }
         }
 
         break;
@@ -487,6 +560,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow) {
+    // ===== 测试版调试输出（正式版请注释掉以下printf行）=====
+    // 测试版：记录初始化和关键操作日志
+    // 正式版：注释掉所有printf行
+    
+    // [TEST] Initialize logs (uncomment for debug build, comment for release)
+    // printf("[INFO] Application starting...\n");
+    OutputDebugString(L"WinMain started\n");
+    
     INITCOMMONCONTROLSEX icex;
     icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
     icex.dwICC = ICC_WIN95_CLASSES;
@@ -503,27 +584,50 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
     wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszClassName = CLASS_NAME;
 
-    RegisterClassExW(&wcex);
+    ATOM atom = RegisterClassExW(&wcex);
+    if (!atom) {
+        // [TEST] Log error (uncomment for debug build, comment for release)
+        // printf("[ERROR] Failed to register window class\n");
+        MessageBoxW(NULL, L"注册窗口类失败", L"错误", MB_ICONERROR);
+        return 1;
+    }
+    // [TEST] Log success (uncomment for debug build, comment for release)
+    // printf("[INFO] Window class registered successfully\n");
+    OutputDebugString(L"Window class registered\n");
 
     int initialHeight = 425 + BASE_HOST_COUNT * 30 + 30;
-    HWND hwnd = CreateWindowW(CLASS_NAME, L"语音厅群内报表生成器 Version:Test0.7.0", WS_OVERLAPPEDWINDOW,
+    HWND hwnd = CreateWindowW(CLASS_NAME, L"语音厅群内报表生成器 Version:0.8.0", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, 750, initialHeight, NULL, NULL, hInstance, NULL);
 
     if (!hwnd) {
+        // [TEST] Log error (uncomment for debug build, comment for release)
+        // printf("[ERROR] Failed to create window\n");
         MessageBoxW(NULL, L"创建窗口失败", L"错误", MB_ICONERROR);
         return 1;
     }
+    // [TEST] Log success (uncomment for debug build, comment for release)
+    // printf("[INFO] Window created successfully\n");
+    OutputDebugString(L"Window created\n");
 
     gHwndMain = hwnd;
 
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
+    // [TEST] Log success (uncomment for debug build, comment for release)
+    // printf("[INFO] Window shown\n");
+    OutputDebugString(L"Window shown\n");
 
     MSG msg;
+    // [TEST] Log info (uncomment for debug build, comment for release)
+    // printf("[INFO] Entering message loop\n");
+    OutputDebugString(L"Entering message loop\n");
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
 
+    // [TEST] Log info (uncomment for debug build, comment for release)
+    // printf("[INFO] Application exiting\n");
+    OutputDebugString(L"Exiting\n");
     return (int)msg.wParam;
 }

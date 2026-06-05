@@ -166,14 +166,10 @@
       the Work or Derivative Works thereof, You may choose to offer,
       and charge a fee for, acceptance of support, warranty, indemnity,
       or other liability obligations and/or rights consistent with this
-      License. However, in accepting such obligations, You may act only
-      on Your own behalf and on Your sole responsibility, not on behalf
-      of any other Contributor, and only if You agree to indemnify,
-      defend, and hold each Contributor harmless for any liability
-      incurred by, or claims asserted against, such Contributor by reason
-      of your accepting any such warranty or additional liability.
-
-   END OF TERMS AND CONDITIONS
+      License. However, in accepting such obligations, You may not act on
+      behalf of or bind any other Contributor, and You are solely
+      responsible for any claims against You, Your activity under this
+      License, and Your acceptance of any such obligations.
 
    APPENDIX: How to apply the Apache License to your work.
 
@@ -186,7 +182,7 @@
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright 2026 YunLuo00624dev
+   Copyright 2026 YunLuo
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.

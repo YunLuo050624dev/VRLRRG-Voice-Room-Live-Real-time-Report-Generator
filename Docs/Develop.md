@@ -2,9 +2,9 @@
 
 ## Architecture Overview
 
-Voice-Room-Live-Real-time-Report-Generator is a Windows desktop application built using **native Win32 API** and C++. It follows a modular design with separate dialog implementations.
+Voice-Room-Live-Real-time-Report-Generator is a Windows desktop application built using **Dear ImGui** with **DirectX11** as the rendering backend. It follows an immediate mode GUI architecture.
 
-> **Note**: This project uses Win32 API by default. For information about integrating other C++ UI libraries (Qt, wxWidgets, Dear ImGui, MFC), see the [UI Library Integration Guide](ImportTheUILibrary.md).
+> **Note**: This project uses Dear ImGui as the official UI library. For information about integrating other C++ UI libraries, see the [UI Library Integration Guide](ImportTheUILibrary.md).
 
 ## Project Structure
 
@@ -14,6 +14,14 @@ Voice-Room-Live-Real-time-Report-Generator/
 │   ├── main.cpp              # Main window and application logic
 │   ├── DataStructures.h      # Data structures and global variables
 │   ├── Resource.h            # Control IDs and constants
+│   ├── Resource.rc           # Resource file (icons, fonts)
+│   ├── imgui/                # Dear ImGui library
+│   │   ├── imgui.h
+│   │   ├── imgui.cpp
+│   │   ├── imgui_impl_win32.h/cpp
+│   │   ├── imgui_impl_dx11.h/cpp
+│   │   └── ...
+│   ├── fonts/                # Font files
 │   ├── TargetDialog.h/cpp    # Target value setting dialog
 │   └── TimePickerDialog.h/cpp # Time selection dialog
 └── CMakeLists.txt            # Build configuration
@@ -21,18 +29,45 @@ Voice-Room-Live-Real-time-Report-Generator/
 
 ## Core Components
 
-### 1. Data Structures (DataStructures.h)
+### 1. Main Window (main.cpp)
+
+The main application entry point and rendering loop:
+
+```cpp
+// Main loop
+while (!done) {
+    // Handle Windows messages
+    MSG msg;
+    while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE)) {
+        ::TranslateMessage(&msg);
+        ::DispatchMessage(&msg);
+    }
+
+    // Start new ImGui frame
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    // Render UI components
+    RenderHallInfoSection();
+    RenderCountersSection();
+    RenderHostsSection();
+
+    // Render
+    ImGui::Render();
+    // ... DirectX11 rendering
+}
+```
+
+### 2. Data Structures (DataStructures.h)
 
 #### CounterData
-Stores information for each counter (calling, new payment, new user acquisition, connection, repeat purchase, three-way conversion):
+Stores information for each counter:
 ```cpp
 struct CounterData {
-    HWND hCurrEdit;      // Current value edit box
-    HWND hTgtEdit;       // Target value edit box
-    int incBtnId;        // Increment button ID
-    int setBtnId;        // Set button ID
-    int currValue;       // Current value
-    int tgtValue;        // Target value
+    char name[32];       // Counter name
+    int currentValue;    // Current value
+    int targetValue;     // Target value
 };
 ```
 
@@ -40,142 +75,156 @@ struct CounterData {
 Stores information for each host row:
 ```cpp
 struct HostData {
-    HWND hLabel;         // Host number label
-    HWND hNameEdit;      // Host name edit box
-    HWND hLaxinEdit;     // New user count edit box
-    HWND hErxiaoEdit;    // Repeat purchase edit box
-    HWND hJianlianEdit;  // Connection edit box
-    HWND hSanguanEdit;   // Three-way conversion edit box
-    // ... other controls
-    int hostIndex;       // Host index
+    char name[64];       // Host name
+    int laxin;           // New user count
+    int erxiao;          // Repeat purchase count
+    int jianlian;        // Connection count
+    int sanguan;         // Three-way conversion count
 };
 ```
 
-### 2. Resource Definitions (Resource.h)
+### 3. Resource Definitions (Resource.h)
 
-Defines all control IDs:
-- `MAX_HOSTS` - Maximum number of hosts (8)
+Defines all control IDs and constants:
+- `MAX_HOSTS` - Maximum number of hosts (10)
 - `BASE_HOST_COUNT` - Initial host count (3)
-- Control ID ranges for different counter types and host controls
 
-### 3. Main Window (main.cpp)
+### 4. UI Sections
 
-Key functions:
-- `WndProc()` - Main window procedure, handles all messages
-- `CreateLabel()`, `CreateEdit()`, `CreateButton()` - Helper functions for creating controls
-- `UpdateHostRows()` - Updates host table layout when hosts are added/removed
-- `CopyToClipboard()` - Copies report data to clipboard
+#### Hall Info Section
+```cpp
+void RenderHallInfoSection() {
+    ImGui::SeparatorText("厅信息");
+    // Hall name input
+    ImGui::InputText("##HallName", gHallName, IM_ARRAYSIZE(gHallName));
+    // Yimai input
+    ImGui::InputText("##Yimai", gYimai, IM_ARRAYSIZE(gYimai));
+    // Time range inputs
+    ImGui::InputText("##TimeStart", gTimeStart, IM_ARRAYSIZE(gTimeStart));
+    ImGui::InputText("##TimeEnd", gTimeEnd, IM_ARRAYSIZE(gTimeEnd));
+}
+```
 
-Message handling:
-- `WM_CREATE` - Initializes all controls
-- `WM_COMMAND` - Handles button clicks and edit box changes
-- `WM_SIZE` - Handles window resizing
-- `WM_PAINT` - Draws window background
+#### Counters Section
+```cpp
+void RenderCountersSection() {
+    ImGui::SeparatorText("计数器");
+    for (int i = 0; i < 6; i++) {
+        ImGui::Text("%s", gCounters[i].name);
+        ImGui::InputInt("##Current", &gCounters[i].currentValue);
+        ImGui::InputInt("##Target", &gCounters[i].targetValue);
+    }
+}
+```
 
-### 4. Target Dialog (TargetDialog.h/cpp)
-
-Custom dialog for setting target values:
-- Uses a custom window class (`TargetDialogClass`)
-- Features: numeric input, OK/Cancel buttons
-- Updates the corresponding counter when OK is clicked
-
-### 5. Time Picker Dialog (TimePickerDialog.h/cpp)
-
-Dialog for selecting shift times:
-- Hour selection (0-23)
-- Minute selection (0-55 in 5-minute increments)
-- Mouse wheel support for scrolling
-- Auto-adjusts end time if start time > end time
+#### Hosts Section
+```cpp
+void RenderHostsSection() {
+    ImGui::SeparatorText("主持数据");
+    for (size_t i = 0; i < gHosts.size(); i++) {
+        ImGui::InputText("##HostName", gHosts[i].name, IM_ARRAYSIZE(gHosts[i].name));
+        ImGui::InputInt("##Laxin", &gHosts[i].laxin);
+        // ... other inputs
+    }
+}
+```
 
 ## Adding New Features
 
 ### Adding a New Counter
 
-1. Add new control IDs in `Resource.h`:
+1. Extend the `gCounters` array in `main.cpp`
+2. Add rendering code in `RenderCountersSection()`
+3. Update `CopyDataToClipboard()` to include the new counter
+
+### Adding a New UI Section
+
+1. Create a new render function:
 ```cpp
-#define ID_BTN_NEWCOUNTER_INC 2061
-#define ID_BTN_NEWCOUNTER_SET 2062
-#define ID_EDIT_NEWCOUNTER_CURR 2063
-#define ID_EDIT_NEWCOUNTER_TGT 2064
-```
-
-2. Extend the `gCounters` array in `main.cpp`
-
-3. Add control creation in `WM_CREATE` handler
-
-4. Add command handling in `WM_COMMAND` handler
-
-### Adding a New Dialog
-
-1. Create new header and implementation files (e.g., `MyDialog.h`, `MyDialog.cpp`)
-
-2. Implement the dialog procedure:
-```cpp
-LRESULT CALLBACK MyDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-        case WM_CREATE:
-            // Create controls
-            return 0;
-        case WM_COMMAND:
-            // Handle commands
-            return 0;
-        case WM_DESTROY:
-            // Cleanup
-            return 0;
-    }
-    return DefWindowProc(hDlg, msg, wParam, lParam);
+void RenderMyNewSection() {
+    ImGui::SeparatorText("New Section");
+    // Add your UI elements here
 }
 ```
 
-3. Register the window class and create the dialog in your show function
+2. Call it in the main loop:
+```cpp
+// In the main rendering loop
+RenderMyNewSection();
+```
 
-4. Add the new files to `CMakeLists.txt`
+### Adding Input Validation
+
+```cpp
+// Non-negative validation
+if (value < 0) value = 0;
+
+// Time validation
+int startHour, startMin, endHour, endMin;
+sscanf_s(gTimeStart, "%d:%d", &startHour, &startMin);
+sscanf_s(gTimeEnd, "%d:%d", &endHour, &endMin);
+// Validate and adjust
+```
 
 ## Style Guidelines
 
-- Use Win32 API conventions
+- Use ImGui API conventions
 - Follow the existing code structure
 - Keep functions focused and modular
 - Use meaningful variable and function names
 - Add comments for complex logic
+- Use `ImGui::PushID()`/`ImGui::PopID()` for unique widget IDs
 
 ## Debugging Tips
 
-- Use `OutputDebugString()` for debug output
-- Check return values of Win32 API calls
-- Use Spy++ to inspect window messages
-- Verify control IDs match between creation and handling
+- Use `LOG_TEST()` macro for debug output (only in test builds)
+- Use `LOG_ERROR()` for error conditions
+- Use `LOG_INFO()` for initialization events
+- Check ImGui demo window: `ImGui::ShowDemoWindow()`
 
 ## Common Patterns
 
-### Creating Controls
+### Creating Input Fields
 
 ```cpp
-CreateWindow(L"STATIC", L"Label", WS_CHILD | WS_VISIBLE,
-    x, y, width, height, parent, NULL, hInstance, NULL);
+// Text input
+ImGui::InputText("##Label", buffer, bufferSize);
 
-CreateWindow(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER,
-    x, y, width, height, parent, (HMENU)controlId, hInstance, NULL);
+// Integer input (non-negative)
+ImGui::InputInt("##Label", &value);
+if (value < 0) value = 0;
 
-CreateWindow(L"BUTTON", L"Button", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-    x, y, width, height, parent, (HMENU)controlId, hInstance, NULL);
+// With unique ID
+ImGui::PushID(uniqueId);
+ImGui::InputInt("##Value", &value);
+ImGui::PopID();
 ```
 
-### Handling WM_COMMAND
+### Creating Buttons
 
 ```cpp
-case WM_COMMAND:
-    switch (LOWORD(wParam)) {
-        case ID_MY_BUTTON:
-            // Handle button click
-            break;
-        case ID_MY_EDIT:
-            if (HIWORD(wParam) == EN_CHANGE) {
-                // Handle edit box change
-            }
-            break;
-    }
-    return 0;
+if (ImGui::Button("Button Label")) {
+    // Handle button click
+}
+```
+
+### Layout
+
+```cpp
+// Horizontal layout
+ImGui::SameLine();
+
+// Columns
+ImGui::Columns(2, "columnName", false);
+ImGui::SetColumnWidth(0, 120);
+ImGui::Text("Label:");
+ImGui::NextColumn();
+ImGui::InputText("##Input", buffer, size);
+ImGui::Columns(1);
+
+// Spacing
+ImGui::Spacing();
+ImGui::Separator();
 ```
 
 ## Build Configuration
@@ -183,10 +232,9 @@ case WM_COMMAND:
 The project uses CMake for building. Add new source files to `CMakeLists.txt`:
 
 ```cmake
-add_executable(${PROJECT_NAME} WIN32 
+add_executable(${PROJECT_NAME}
     Src/main.cpp
-    Src/TargetDialog.cpp
-    Src/TimePickerDialog.cpp
-    Src/MyNewDialog.cpp  # Add new files here
+    Src/Resource.rc
+    Src/MyNewFile.cpp  # Add new files here
 )
 ```

@@ -1,19 +1,49 @@
 # Importing C++ UI Libraries
 
-## Default UI Framework
+## Current UI Framework
 
-**This project uses native Win32 API by default.**
+**This project uses Dear ImGui as the official UI library with DirectX11 as the rendering backend.**
 
-The Win32 API is Microsoft's native application programming interface for Windows. It provides direct access to Windows operating system features and is suitable for lightweight, high-performance desktop applications.
+Dear ImGui is a bloat-free graphical user interface library for C++. It is fast, portable, renderer agnostic, and self-contained.
 
-### Advantages of Win32 API
+### Advantages of Dear ImGui
+- Immediate mode GUI - simple and intuitive API
 - No external dependencies required
 - Small executable size
-- Direct access to Windows features
-- Full control over the UI
 - Excellent performance
+- Easy to integrate and customize
+- Great for tools and debug interfaces
 
-## Supported C++ UI Libraries
+## Current Implementation
+
+The project integrates Dear ImGui with DirectX11:
+
+```cpp
+// Initialize DirectX11
+ID3D11Device* g_pd3dDevice = NULL;
+ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
+IDXGISwapChain* g_pSwapChain = NULL;
+
+// Initialize ImGui
+ImGui::CreateContext();
+ImGui_ImplWin32_Init(hwnd);
+ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+// Main loop
+while (!done) {
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+    
+    // Render UI here
+    RenderUI();
+    
+    ImGui::Render();
+    // Present
+}
+```
+
+## Alternative C++ UI Libraries
 
 ### 1. Qt
 
@@ -23,22 +53,7 @@ Qt is a cross-platform application framework for developing graphical user inter
 1. Install Qt (download from [qt.io](https://www.qt.io/))
 2. Modify `CMakeLists.txt`:
 ```cmake
-cmake_minimum_required(VERSION 3.15)
-project(Voice-Room-Live-Real-time-Report-Generator)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Find Qt
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/Out)
-
-add_executable(${PROJECT_NAME}
-    Src/main.cpp
-    Src/TargetDialog.cpp
-    Src/TimePickerDialog.cpp
-)
 
 target_link_libraries(${PROJECT_NAME}
     Qt6::Core
@@ -64,22 +79,20 @@ include(${wxWidgets_USE_FILE})
 target_link_libraries(${PROJECT_NAME} ${wxWidgets_LIBRARIES})
 ```
 
-### 3. Dear ImGui
-
-Dear ImGui is a bloat-free graphical user interface library for C++.
-
-#### Integration Steps
-1. Add ImGui source files to your project
-2. Create a render backend (e.g., using DirectX or OpenGL)
-3. Replace the Win32 message loop with ImGui rendering loop
-
-### 4. MFC (Microsoft Foundation Classes)
+### 3. MFC (Microsoft Foundation Classes)
 
 MFC is a Microsoft library for developing Windows applications in C++.
 
 #### Integration Steps
 1. Enable MFC in Visual Studio project settings
-2. Use `CWinApp` and `CDialog` classes instead of Win32 API
+2. Use `CWinApp` and `CDialog` classes
+
+### 4. Win32 API (Native)
+
+The original implementation used native Win32 API. This approach provides:
+- Direct access to Windows features
+- Smallest possible executable
+- Full control over UI
 
 ## Migration Considerations
 
@@ -95,39 +108,16 @@ MFC is a Microsoft library for developing Windows applications in C++.
 3. **Test incrementally** - Migrate one feature at a time and test thoroughly
 4. **Update documentation** - Keep README and development guides current
 
-## Maintaining Win32 API Option
-
-If you want to maintain the option to use either Win32 API or another UI library, consider using preprocessor directives:
-
-```cpp
-#ifdef USE_QT
-// Qt implementation
-#else
-// Win32 API implementation
-#endif
-```
-
-And in `CMakeLists.txt`:
-```cmake
-option(USE_QT "Use Qt framework instead of Win32 API" OFF)
-
-if(USE_QT)
-    # Qt configuration
-else()
-    # Win32 configuration
-endif()
-```
-
 ## Recommendations
 
-- **For this project**: Continue using Win32 API unless specific needs require otherwise
+- **For this project**: Continue using Dear ImGui for its simplicity and performance
 - **For cross-platform needs**: Consider Qt or wxWidgets
-- **For rapid prototyping**: Consider Dear ImGui
 - **For enterprise Windows apps**: Consider MFC
 
 ## Additional Resources
 
-- [Win32 API Documentation](https://learn.microsoft.com/en-us/windows/win32/)
+- [Dear ImGui GitHub](https://github.com/ocornut/imgui)
+- [Dear ImGui Wiki](https://github.com/ocornut/imgui/wiki)
 - [Qt Documentation](https://doc.qt.io/)
 - [wxWidgets Documentation](https://docs.wxwidgets.org/)
-- [Dear ImGui GitHub](https://github.com/ocornut/imgui)
+- [Win32 API Documentation](https://learn.microsoft.com/en-us/windows/win32/)

@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-05
+
+### Added
+
+- Integrated Dear ImGui as official UI library, replacing native Win32 UI
+- Integrated DirectX11 as IMGUI rendering backend
+- Added hall name input field, separated from Yimai field
+- Added health reminder for long shifts (confirmation prompt when shift exceeds 6 hours)
+- Added time picker dialog
+
+### Changed
+
+- Full UI localization to Chinese
+- Window size adjusted to 1200x900, font size adjusted to 24px
+- Hall info section layout adjusted, fields arranged vertically
+- Counter section layout adjusted, displayed horizontally
+- Host data copy format changed to "HostName: Laxin:X Erxiao:X Jianlian:X Sanguan:X"
+- Default time range changed to 00:00-03:00
+
+### Fixed
+
+- Chinese font display issue, loading project font file
+- Host data numbers not displaying
+- Number input fields accepting negative values
+- Chinese character encoding issue when copying data (using Unicode)
+- Crash after confirming health reminder
+- Font file path issue, changed to `data/font/` directory structure
+
+### Removed
+
+- Original Win32 native UI code
+
 ## [0.8.0] - 2026-06-04
 
 ### Added

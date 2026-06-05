@@ -2,7 +2,7 @@
 
 ## Overview
 
-Voice-Room-Live-Real-time-Report-Generator is a real-time report generation tool developed by YunLuo, designed for Douyin (TikTok) Qianguang labor unions and other non-8-person microphone voice chat live broadcast work groups.
+Voice-Room-Live-Real-time-Report-Generator is a real-time report generation tool developed by YunLuo, designed for Douyin (TikTok) non-8-person microphone voice chat live broadcast work groups.
 
 This project uses **Dear ImGui** as the official UI library with **DirectX11** as the rendering backend.
 

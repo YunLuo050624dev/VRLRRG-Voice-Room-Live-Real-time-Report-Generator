@@ -166,6 +166,27 @@ sscanf_s(gTimeEnd, "%d:%d", &endHour, &endMin);
 // 验证并调整
 ```
 
+### 处理中文编码
+
+ImGui 使用 UTF-8 编码存储字符串。当需要将字符串复制到剪贴板或其他 Windows API 时，需要进行编码转换：
+
+```cpp
+// UTF-8 转 UTF-16 辅助函数
+auto utf8ToUtf16 = [](const char* utf8) -> std::wstring {
+    if (!utf8 || *utf8 == '\0') return L"";
+    int len = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
+    if (len <= 1) return L"";
+    std::wstring result(len - 1, L'\0'); // 排除终止符
+    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, &result[0], len);
+    return result;
+};
+
+// 使用示例
+std::wstring wstr = utf8ToUtf16(gHallName);
+```
+
+**注意：** `MultiByteToWideChar` 返回的长度包含终止符，创建 `std::wstring` 时需要使用 `len - 1` 排除它，否则会导致字符串截断。
+
 ## 风格指南
 
 - 使用 ImGui API 约定

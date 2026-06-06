@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-06-06
+
+### Fixed
+
+- Fixed Chinese character garbling when copying data (using `MultiByteToWideChar` for UTF-8 to UTF-16 conversion)
+
 ## [0.9.0] - 2026-06-05
 
 ### Added

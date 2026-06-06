@@ -166,6 +166,27 @@ sscanf_s(gTimeEnd, "%d:%d", &endHour, &endMin);
 // Validate and adjust
 ```
 
+### Handling Chinese Encoding
+
+ImGui uses UTF-8 encoding for strings. When copying strings to clipboard or using other Windows APIs, encoding conversion is required:
+
+```cpp
+// UTF-8 to UTF-16 helper function
+auto utf8ToUtf16 = [](const char* utf8) -> std::wstring {
+    if (!utf8 || *utf8 == '\0') return L"";
+    int len = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
+    if (len <= 1) return L"";
+    std::wstring result(len - 1, L'\0'); // Exclude null terminator
+    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, &result[0], len);
+    return result;
+};
+
+// Usage example
+std::wstring wstr = utf8ToUtf16(gHallName);
+```
+
+**Note:** `MultiByteToWideChar` returns length including the null terminator. Use `len - 1` when creating `std::wstring` to exclude it, otherwise the string will be truncated.
+
 ## Style Guidelines
 
 - Use ImGui API conventions

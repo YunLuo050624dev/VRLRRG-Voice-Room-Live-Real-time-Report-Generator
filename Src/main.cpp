@@ -1,5 +1,5 @@
 // Voice Room Live Real-time Report Generator
-// IMGUI Version - v0.9.1
+// IMGUI Version - v0.9.2
 
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -589,7 +589,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
                        nullptr, nullptr, nullptr, nullptr, L"VoiceRoomReportGenerator", nullptr };
     ::RegisterClassExW(&wc);
     
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"语音厅群内报表生成器 Version:0.9.1 (IMGUI)", 
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"语音厅群内报表生成器 Version:0.9.2", 
                                  WS_OVERLAPPEDWINDOW, 100, 100, 1200, 900, 
                                  nullptr, nullptr, wc.hInstance, nullptr);
     
